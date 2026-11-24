@@ -1,6 +1,10 @@
 #include "LoRaWan_APP.h"
 #include "Arduino.h"
+#include "driver/rtc_io.h"
 
+#define BUTTON_PIN_BITMASK(GPIO) (1ULL << GPIO)  // 2 ^ GPIO_NUMBER in hex
+#define USE_EXT0_WAKEUP          1               // 1 = EXT0 wakeup, 0 = EXT1 wakeup
+#define WAKEUP_GPIO              GPIO_NUM_2
 
 #define RF_FREQUENCY 915000000  // Hz
 
@@ -32,17 +36,33 @@ double txNumber;
 
 bool lora_idle = true;
 //edit
-int BlueLED = 46;
+int BlueLED = 3;  //changed from 46 for deep sleep
 int RedLED = 45;
 int GreenLED = 42;
 int x = 0;
 int Y = 0;
 
 static RadioEvents_t RadioEvents;
-void OnTxDone(void);
-void OnTxTimeout(void);
+//void OnTxDone(void);
+//void OnTxTimeout(void);
 
 void setup() {
+  // put your setup code here, to run once:
+#if USE_EXT0_WAKEUP
+  esp_sleep_enable_ext0_wakeup(WAKEUP_GPIO, 1);  //1 = High, 0 = 
+  
+  #else  // EXT1 WAKEUP
+  //If you were to use ext1, you would use it like
+  esp_sleep_enable_ext1_wakeup_io(BUTTON_PIN_BITMASK(WAKEUP_GPIO), ESP_EXT1_WAKEUP_ANY_HIGH);
+  /*
+    If there are no external pull-up/downs, tie wakeup pins to inactive level with internal pull-up/downs via RTC IO
+         during deepsleep. However, RTC IO relies on the RTC_PERIPH power domain. Keeping this power domain on will
+         increase some power consumption. However, if we turn off the RTC_PERIPH domain or if certain chips lack the RTC_PERIPH
+         domain, we will use the HOLD feature to maintain the pull-up and pull-down on the pins during sleep.
+  */
+  rtc_gpio_pulldown_en(WAKEUP_GPIO);  // GPIO33 is tie to GND in order to wake up in HIGH
+  rtc_gpio_pullup_dis(WAKEUP_GPIO);   // Disable PULL_UP in order to allow it to wakeup on HIGH
+#endif
   Serial.begin(115200);
   Mcu.begin(HELTEC_BOARD, SLOW_CLK_TPYE);
   //edit
@@ -52,8 +72,8 @@ void setup() {
 
   txNumber = 0;
 
-  RadioEvents.TxDone = OnTxDone;
-  RadioEvents.TxTimeout = OnTxTimeout;
+ // RadioEvents.TxDone = OnTxDone;
+  //.TxTimeout = OnTxTimeout;
 
   Radio.Init(&RadioEvents);
   Radio.SetChannel(RF_FREQUENCY);
@@ -61,106 +81,40 @@ void setup() {
                     LORA_SPREADING_FACTOR, LORA_CODINGRATE,
                     LORA_PREAMBLE_LENGTH, LORA_FIX_LENGTH_PAYLOAD_ON,
                     true, 0, 0, LORA_IQ_INVERSION_ON, 3000);
+
+
+  Serial.begin(115200);
+  delay(1000);  //Take some time to open up the Serial Monitor
+
+  
+
+  
+  
+  Serial.println("BlueLED");//start here
+  sprintf(txpacket, "RedLED");
+  delay(100);
+  Serial.printf("\r\nsending packet \"%s\" , length %d\r\n", txpacket, strlen(txpacket));
+  Radio.Send((uint8_t *)txpacket, strlen(txpacket));  //send the package out
+  lora_idle = false;
+  Radio.IrqProcess();
+  Serial.println(txpacket);
+    delay(1000);
+  sprintf(txpacket, "BlueLED");
+  Serial.printf("\r\nsending packet \"%s\" , length %d\r\n", txpacket, strlen(txpacket));
+
+  Radio.Send((uint8_t *)txpacket, strlen(txpacket));  //send the package out
+    lora_idle = false;
+    //	}
+  Radio.IrqProcess();
+
+    //edit
+  Serial.println(txpacket);
+  delay(1000);
+  Serial.println("Sleep");
+  esp_deep_sleep_start();
 }
-
-
 
 void loop() {
-  //edit
-  int BlueLEDState = digitalRead(BlueLED);
-  if (BlueLEDState == 1) {
+  // put your main code here, to run repeatedly:
 
-    Serial.println(x);
-
-    //TSif(x == 1)
-    {
-      sprintf(txpacket, "BlueLED");
-      delay(100);
-      //TS
-      //}
-      //if(x == 0)
-      //{
-      sprintf(txpacket, "BlueLED");  //Changed from on to off
-    }
-
-
-    Serial.printf("\r\nsending packet \"%s\" , length %d\r\n", txpacket, strlen(txpacket));
-
-    Radio.Send((uint8_t *)txpacket, strlen(txpacket));  //send the package out
-    lora_idle = false;
-    //	}
-    Radio.IrqProcess();
-
-    //edit
-    Serial.println(txpacket);
-    delay(1000);
-  }
-  //edit
-
-  int RedLEDState = digitalRead(RedLED);
-  if (RedLEDState == 1) {
-
-    Serial.println(Y);
-
-    //TSif(x == 1)
-    {
-      sprintf(txpacket, "RedLED");
-      delay(100);
-      //TS
-      //}
-      //if(x == 0)
-      //{
-      sprintf(txpacket, "RedLED");  //Changed from on to off
-    }
-
-
-    Serial.printf("\r\nsending packet \"%s\" , length %d\r\n", txpacket, strlen(txpacket));
-
-    Radio.Send((uint8_t *)txpacket, strlen(txpacket));  //send the package out
-    lora_idle = false;
-    //	}
-    Radio.IrqProcess();
-
-    //edit
-    Serial.println(txpacket);
-    delay(1000);
-  }
-int GreenLEDState = digitalRead(GreenLED);
-  if (GreenLEDState == 1) {
-
-    Serial.println(x);
-
-    //TSif(x == 1)
-    {
-      sprintf(txpacket, "GreenLED");
-      delay(100);
-      //TS
-      //}
-      //if(x == 0)
-      //{
-      sprintf(txpacket, "GreenLED");  //Changed from on to off
-    }
-
-
-    Serial.printf("\r\nsending packet \"%s\" , length %d\r\n", txpacket, strlen(txpacket));
-
-    Radio.Send((uint8_t *)txpacket, strlen(txpacket));  //send the package out
-    lora_idle = false;
-    //	}
-    Radio.IrqProcess();
-
-    //edit
-    Serial.println(txpacket);
-    delay(1000);
-  }
-}
-void OnTxDone(void) {
-  Serial.println("TX done......");
-  lora_idle = true;
-}
-
-void OnTxTimeout(void) {
-  Radio.Sleep();
-  Serial.println("TX Timeout......");
-  lora_idle = true;
 }
