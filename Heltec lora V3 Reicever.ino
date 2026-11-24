@@ -1,22 +1,32 @@
 #include "LoRaWan_APP.h"
 #include "Arduino.h"
+#include "DYPlayerArduino.h"
 #include "pins_arduino.h"
 #include <Wire.h>
 //#include <Adafruit_SSD1306.h>
 //#include <heltec_unofficial.h>
 #include "HT_SSD1306Wire.h"
 //#include "SSD1306Wire.h"
-//edit
-int BlueLED = 46;
-int RedLED = 45;
+#include <Adafruit_NeoPixel.h>
+int BlueLED = 45;
+int RedLED = 46;
 int GreenLED = 42;
+int YellowLED = 41;
 int demoMode = 0;
 int counter = 1;
 //int HT_SSD1306Wire.h
 
+#define LED_PIN    48  // Onboard RGB LED pin on ESP32-S3 DevKitC-1
+#define LED_COUNT 26   // Number of onboard NeoPixels
+
+// Declare our NeoPixel strip object:
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+DY::Player player;
+
 // addr , freq , i2c group , resolution , rst
-SSD1306Wire  factory_display(0x3c, 500000, SDA_OLED, SCL_OLED, GEOMETRY_128_64, RST_OLED);  // addr , freq , i2c group , resolution , rst
-#define RF_FREQUENCY 915000000  // Hz
+SSD1306Wire factory_display(0x3c, 500000, SDA_OLED, SCL_OLED, GEOMETRY_128_64, RST_OLED);  // addr , freq , i2c group , resolution , rst
+#define RF_FREQUENCY 915000000                                                             // Hz
 
 #define TX_OUTPUT_POWER 14  // dBm
 
@@ -74,12 +84,15 @@ void displayReset(void) {
 }
 void setup() {
   Serial.begin(115200);
-  
+
+  player.begin();
+  player.setVolume(20); // 50% Volume
+
   Mcu.begin(HELTEC_BOARD, SLOW_CLK_TPYE);
   factory_display.init();
-	factory_display.clear();
-	factory_display.display();
- 
+  factory_display.clear();
+  factory_display.display();
+
   while (!Serial) {
     delay(100);
   }
@@ -88,7 +101,7 @@ void setup() {
   // This turns on and resets the OLED on the Heltec boards
   VextON();
   displayReset();
- 
+
   // Initialising the UI will init the display too.
   factory_display.init();
   factory_display.flipScreenVertically();
@@ -102,11 +115,13 @@ void setup() {
 
   //edit
   pinMode(BlueLED, OUTPUT);
-  digitalWrite(BlueLED, LOW);
+  digitalWrite(BlueLED, HIGH);
   pinMode(RedLED, OUTPUT);
-  digitalWrite(RedLED, LOW);
+  digitalWrite(RedLED, HIGH);
   pinMode(GreenLED, OUTPUT);
-  digitalWrite(GreenLED, LOW);
+  digitalWrite(GreenLED, HIGH);
+  pinMode(YellowLED, OUTPUT);
+  digitalWrite(YellowLED, HIGH);
   txNumber = 0;
   rssi = 0;
 
@@ -120,7 +135,7 @@ void setup() {
 }
 
 void drawFontFaceDemo() {
- 
+  // Font Demo1
   // create more fonts at http://oleddisplay.squix.ch/
   factory_display.setTextAlignment(TEXT_ALIGN_CENTER);
   //factory_display.setFont(ArialMT_Plain_10);
@@ -152,54 +167,179 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr) {
   //edit
 
   if (String(rxpacket) == "BlueLED") {
-    digitalWrite(BlueLED, HIGH);
+    //digitalWrite(BlueLED, HIGH);
     factory_display.clear();
-    factory_display.display();  
+    factory_display.display();
     factory_display.setFont(ArialMT_Plain_24);
     factory_display.setTextAlignment(TEXT_ALIGN_LEFT);
-    factory_display.drawString(0, 10, "      Blue");
+    factory_display.drawString(0, 10, "  Blue LED");
     factory_display.display();
-    delay(2000);
-    factory_display.clear();
+
+    player.playSpecified(1);
+    //delay(5000);
+   
     digitalWrite(BlueLED, LOW);
+    
+    delay(2000);
+    
+    digitalWrite(BlueLED, HIGH);
+    //delay(200);
+    //digitalWrite(BlueLED, LOW);
+    //delay(2000);
+    factory_display.clear();
+    //digitalWrite(BlueLED, LOW);//test
     Serial.println(String(rxpacket));
+    
+    colorWipe(strip.Color(255, 0, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 255), 10);
+    delay(5);// Blue
+    //colorWipe(strip.Color(0, 0, 0), 10);
+    colorWipe(strip.Color(255, 0, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 255), 10);
+    delay(5);// Blue
+    //colorWipe(strip.Color(0, 0, 0), 10);
+    colorWipe(strip.Color(255, 0, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 255), 10);
+    delay(5);// Blue
+    colorWipe(strip.Color(0, 0, 0), 10);
+
+    delay(5000);
+    
   }
   if (String(rxpacket) == "RedLED") {
-    digitalWrite(RedLED, HIGH);
+    digitalWrite(RedLED, LOW);
+    digitalWrite(GreenLED, LOW);
+    digitalWrite(BlueLED, LOW);
+    delay(100);
+    digitalWrite(GreenLED, HIGH);
+    digitalWrite(BlueLED, HIGH);
+  
+    player.playSpecified(3);
+    //delay(5000);
+
     factory_display.clear();
-    factory_display.display();  
+    factory_display.display();
     factory_display.setFont(ArialMT_Plain_24);
     factory_display.setTextAlignment(TEXT_ALIGN_LEFT);
-    factory_display.drawString(0, 10, "      Red");
+    factory_display.drawString(0, 10, "  Red LED");
+    //factory_display.drawString(0, 10, "  Luz roja");
     factory_display.display();
-    delay(2000);
-    digitalWrite(RedLED, LOW);
+    delay(1500);
+    digitalWrite(RedLED, HIGH);
     Serial.println(String(rxpacket));
+
+    colorWipe(strip.Color(255, 0, 0), 0);
+    delay(500);// Green
+    colorWipe(strip.Color(0, 0, 0), 0);
+    delay(500);// Blue
+    //colorWipe(strip.Color(0, 0, 0), 0);
+    colorWipe(strip.Color(255, 0, 0), 0);
+    delay(500);// Green
+    colorWipe(strip.Color(0, 0, 0), 0);
+    delay(500);// Blue
+    //colorWipe(strip.Color(0, 0, 0), 0);
+    colorWipe(strip.Color(255, 0, 0), 0);
+    delay(500);// Green
+    colorWipe(strip.Color(0, 0, 0), 0);
+    delay(50);// Blue
+    
+
+    delay(5000);  
   }
   if (String(rxpacket) == "GreenLED") {
-    digitalWrite(GreenLED, HIGH);
+    digitalWrite(GreenLED, LOW);
     factory_display.clear();
-    factory_display.display();  
+    factory_display.display();
     factory_display.setFont(ArialMT_Plain_24);
     factory_display.setTextAlignment(TEXT_ALIGN_LEFT);
-    factory_display.drawString(0, 10, "     Green");
+    //factory_display.drawString(0, 10, "     Verde");
+    factory_display.drawString(0, 10, "Green LED");
     factory_display.display();
     delay(2000);
-    digitalWrite(GreenLED, LOW);
+    digitalWrite(GreenLED, HIGH);
     Serial.println(String(rxpacket));
+    
+    player.playSpecified(2);
+    //delay(5000);
+    
+    colorWipe(strip.Color(0, 255, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 0), 10);
+    delay(5);// Blue
+    //colorWipe(strip.Color(0, 0, 0), 10);
+    colorWipe(strip.Color(0, 255, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 0), 10);
+    delay(5);// Blue
+    //colorWipe(strip.Color(0, 0, 0), 10);
+    colorWipe(strip.Color(0, 255, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 0), 10);
+    delay(5);// Blue
+    
+
+    delay(5000);  
   }
-    
-  {
-    
-    delay(0);
+  if (String(rxpacket) == "YellowLED") {
+    digitalWrite(YellowLED, LOW);
     factory_display.clear();
     factory_display.display();
     factory_display.setFont(ArialMT_Plain_24);
     factory_display.setTextAlignment(TEXT_ALIGN_LEFT);
-    factory_display.drawString(0, 10, "     adiós");
+    //factory_display.drawString(0, 10, "     Verde");
+    factory_display.drawString(0, 10, "Yellow LED");
     factory_display.display();
-    delay(1000);
+    delay(2000);
+    digitalWrite(YellowLED, HIGH);
+    Serial.println(String(rxpacket));
+
+    player.playSpecified(4);
+    //delay(5000);
+    
+    colorWipe(strip.Color(255, 255, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 0), 10);
+    delay(5);// Blue
+    //colorWipe(strip.Color(0, 0, 0), 10);
+    colorWipe(strip.Color(255, 255, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 0), 10);
+    delay(5);// Blue
+    //colorWipe(strip.Color(0, 0, 0), 10);
+    colorWipe(strip.Color(255, 255, 0), 10);
+    delay(5);// Green
+    colorWipe(strip.Color(0, 0, 0), 10);
+    delay(5);// Blue
+    
+
+    delay(5000);  
+  }
+
+  {
+    //digitalWrite(BlueLED, LOW);//trash
+    //Serial.println(String(rxpacket));//trash
+    //delay(0);
+    //factory_display.clear();
+    //factory_display.display();
+    //factory_display.setFont(ArialMT_Plain_24);
+    //factory_display.setTextAlignment(TEXT_ALIGN_LEFT);
+    //factory_display.drawString(0, 10, "     adiós");
+    //factory_display.display();
+    //delay(1000);
     factory_display.clear();
     factory_display.display();
+    delay(1000);
+    digitalWrite(BlueLED, HIGH);
+    digitalWrite(GreenLED, HIGH);
   }
 }
+void colorWipe(uint32_t color, int wait) {
+  for(int i = 0; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, color);
+    strip.show();
+    delay(wait);
+  }
+}  
